@@ -1,0 +1,23 @@
+# IDE and Editor files
+./idea
+.idea
+.vscode
+
+# Python
+.venv
+.pytest_cache
+.ruff_cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# UV generated files
+build/
+dist/
+*.egg-info/
+.uv/
+
+# OS
+.DS_Store

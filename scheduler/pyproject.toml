@@ -1,0 +1,18 @@
+[project]
+name = "kitchen-scheduler"
+version = "1.0.0"
+description = "Kitchen scheduling system with API and core business logic"
+requires-python = ">=3.9"
+dependencies = [
+    "fastapi>=0.116.1",
+    "uvicorn[standard]>=0.35.0",
+]
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["models", "core"]
+
+

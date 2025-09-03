@@ -1,0 +1,10 @@
+[project]
+name = "kitchen-scheduler-api"
+version = "1.0.0"
+description = "FastAPI consumer for kitchen scheduler system"
+requires-python = ">=3.9"
+dependencies = [
+    "fastapi>=0.116.1",
+    "uvicorn[standard]>=0.35.0",
+    "kitchen-scheduler @ file:///Users/ashutosh/Documents/GITS/kitchen-scheduler/scheduler",
+]
