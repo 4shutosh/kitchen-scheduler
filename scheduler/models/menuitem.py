@@ -9,13 +9,10 @@ class MenuAvailability(Enum):
 class MenuItem(): 
     id: int
     name: str
-    availability: bool
+    availability: MenuAvailability
     prep_time: int
     category: str
     description: str
     price: float
     ingredients: list[str]
-    instructions: str
-    image_url: str
     created_at: datetime
-    updated_at: datetime
