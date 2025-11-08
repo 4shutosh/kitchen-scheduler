@@ -10,7 +10,6 @@ function StepTwo() {
 		done: [],
 	});
 	const [loading, setLoading] = useState(false);
-	const [collapsedItems, setCollapsedItems] = useState(new Set());
 
 	useEffect(() => {
 		loadStations();
@@ -48,36 +47,10 @@ function StepTwo() {
 				kitchenAPI.getOrderItemsByStation(selectedStationId, "done"),
 			]);
 
-			const doneItems = doneRes.data || [];
-
 			setOrderItems({
 				todo: todoRes.data || [],
 				inprogress: inprogressRes.data || [],
-				done: doneItems,
-			});
-
-			// Automatically collapse all done items by default (only add new ones, preserve user's manual expand/collapse)
-			setCollapsedItems((prev) => {
-				const newSet = new Set(prev);
-				// Get current done item IDs
-				const currentDoneIds = new Set(doneItems.map((item) => item.id));
-
-				// Remove items that are no longer in done state
-				prev.forEach((itemId) => {
-					if (!currentDoneIds.has(itemId)) {
-						newSet.delete(itemId);
-					}
-				});
-
-				// Add all done items (newly moved to done or newly loaded) - collapsed by default
-				doneItems.forEach((item) => {
-					if (!prev.has(item.id)) {
-						// Only add if not already in Set (preserves user's manual expansion)
-						newSet.add(item.id);
-					}
-				});
-
-				return newSet;
+				done: doneRes.data || [],
 			});
 		} catch (error) {
 			console.error("Error loading order items:", error);
@@ -100,28 +73,16 @@ function StepTwo() {
 		handleStatusChange(item.id, toStatus);
 	};
 
-	const toggleItemCollapse = (itemId) => {
-		setCollapsedItems((prev) => {
-			const newSet = new Set(prev);
-			if (newSet.has(itemId)) {
-				newSet.delete(itemId);
-			} else {
-				newSet.add(itemId);
-			}
-			return newSet;
-		});
-	};
-
 	const renderKanbanColumn = (title, items, status) => {
 		return (
 			<div
 				style={{
 					flex: 1,
-					margin: "0 10px",
+					margin: "0 clamp(5px, 1vw, 10px)",
 					backgroundColor: "#f5f5f5",
 					borderRadius: "8px",
-					padding: "15px",
-					minHeight: "500px",
+					padding: "clamp(10px, 2vw, 15px)",
+					minHeight: "clamp(300px, 50vh, 500px)",
 				}}
 			>
 				<h3
@@ -146,206 +107,151 @@ function StepTwo() {
 					style={{
 						display: "flex",
 						flexDirection: "column",
-						gap: "10px",
+						gap: "4px",
 					}}
 				>
 					{items.map((item) => {
-						const isCollapsed =
-							status === "done" && collapsedItems.has(item.id);
+						const customerName =
+							item.order?.customer?.name || "Unknown Customer";
+						const orderType =
+							item.order?.order_type === "dine_in" ? "Dine In" : "Parcel";
+						const menuItemName = item.menu_item?.name || "Unknown Item";
+
+						// Determine left and right navigation based on status
+						const canMoveLeft = status !== "todo";
+						const canMoveRight = status !== "done";
+						const leftStatus =
+							status === "inprogress"
+								? "todo"
+								: status === "done"
+								? "inprogress"
+								: null;
+						const rightStatus =
+							status === "todo"
+								? "inprogress"
+								: status === "inprogress"
+								? "done"
+								: null;
+
 						return (
 							<div
 								key={item.id}
 								style={{
-									padding: "15px",
+									padding: "6px 8px",
 									backgroundColor: "white",
 									borderRadius: "4px",
 									border: "1px solid #ddd",
-									boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
-									cursor: status !== "done" ? "pointer" : "default",
+									boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+									display: "flex",
+									alignItems: "center",
+									gap: "8px",
 								}}
 							>
+								{/* Left Arrow Button */}
+								{canMoveLeft && (
+									<button
+										onClick={() => moveItem(item, status, leftStatus)}
+										style={{
+											padding: "4px 6px",
+											backgroundColor: "#ff9800",
+											color: "white",
+											border: "none",
+											borderRadius: "3px",
+											cursor: "pointer",
+											fontSize: "13px",
+											flexShrink: 0,
+											display: "flex",
+											alignItems: "center",
+											justifyContent: "center",
+											minWidth: "24px",
+											height: "24px",
+										}}
+										title={`Move to ${
+											leftStatus === "todo" ? "Todo" : "In Progress"
+										}`}
+									>
+										←
+									</button>
+								)}
+								{!canMoveLeft && (
+									<div style={{ width: "24px", flexShrink: 0 }} />
+								)}
+
+								{/* Content - Menu Item Name */}
 								<div
 									style={{
-										display: "flex",
-										justifyContent: "space-between",
-										alignItems: "center",
-										marginBottom: isCollapsed ? "0" : "10px",
-										cursor: status === "done" ? "pointer" : "default",
+										fontSize: "13px",
+										fontWeight: "600",
+										color: "#333",
+										flex: 1,
+										overflow: "hidden",
+										textOverflow: "ellipsis",
+										whiteSpace: "nowrap",
 									}}
-									onClick={
-										status === "done"
-											? () => toggleItemCollapse(item.id)
-											: undefined
-									}
-									title={
-										status === "done"
-											? isCollapsed
-												? "Click to expand"
-												: "Click to collapse"
-											: ""
-									}
 								>
-									<h4 style={{ margin: 0, color: "#333", flex: 1 }}>
-										{item.menu_item?.name || "Unknown Item"}
-									</h4>
-									{status === "done" && (
-										<span
-											style={{
-												fontSize: "14px",
-												color: "#666",
-												marginLeft: "10px",
-											}}
-										>
-											{isCollapsed ? "▶" : "▼"}
-										</span>
-									)}
+									{menuItemName}
 								</div>
 
-								{!isCollapsed && (
-									<>
-										<div
-											style={{
-												fontSize: "14px",
-												color: "#666",
-												marginBottom: "10px",
-											}}
-										>
-											<p style={{ margin: "5px 0" }}>
-												<strong>Order #:</strong> {item.order_id}
-											</p>
-											<p style={{ margin: "5px 0" }}>
-												<strong>Quantity:</strong> {item.quantity}
-											</p>
-											{item.order && (
-												<>
-													<p style={{ margin: "5px 0" }}>
-														<strong>Type:</strong>{" "}
-														{item.order.order_type === "dine_in"
-															? "Dine In"
-															: "Parcel"}
-													</p>
-													{item.order.table_number && (
-														<p style={{ margin: "5px 0" }}>
-															<strong>Table:</strong> {item.order.table_number}
-														</p>
-													)}
-												</>
-											)}
-											{item.menu_item && (
-												<p style={{ margin: "5px 0" }}>
-													<strong>Prep Time:</strong> {item.menu_item.prep_time}{" "}
-													min
-												</p>
-											)}
-											<p
-												style={{
-													margin: "5px 0",
-													fontSize: "12px",
-													color: "#999",
-												}}
-											>
-												Added: {new Date(item.created_at).toLocaleTimeString()}
-											</p>
-										</div>
+								{/* Customer Name */}
+								<span
+									style={{
+										fontSize: "12px",
+										color: "#666",
+										flexShrink: 0,
+										overflow: "hidden",
+										textOverflow: "ellipsis",
+										whiteSpace: "nowrap",
+										maxWidth: "120px",
+									}}
+								>
+									{customerName}
+								</span>
 
-										{status === "todo" && (
-											<button
-												onClick={() => moveItem(item, "todo", "inprogress")}
-												style={{
-													width: "100%",
-													padding: "8px",
-													backgroundColor: "#2196F3",
-													color: "white",
-													border: "none",
-													borderRadius: "4px",
-													cursor: "pointer",
-													marginTop: "10px",
-												}}
-											>
-												Start
-											</button>
-										)}
+								{/* Order Type Badge */}
+								<span
+									style={{
+										padding: "2px 6px",
+										backgroundColor:
+											orderType === "Dine In" ? "#e3f2fd" : "#fff3e0",
+										color: orderType === "Dine In" ? "#1976d2" : "#f57c00",
+										borderRadius: "3px",
+										fontSize: "11px",
+										fontWeight: "500",
+										flexShrink: 0,
+									}}
+								>
+									{orderType}
+								</span>
 
-										{status === "inprogress" && (
-											<div
-												style={{
-													display: "flex",
-													gap: "5px",
-													marginTop: "10px",
-												}}
-											>
-												<button
-													onClick={() => moveItem(item, "inprogress", "todo")}
-													style={{
-														flex: 1,
-														padding: "8px",
-														backgroundColor: "#ff9800",
-														color: "white",
-														border: "none",
-														borderRadius: "4px",
-														cursor: "pointer",
-													}}
-												>
-													Back to Todo
-												</button>
-												<button
-													onClick={() => moveItem(item, "inprogress", "done")}
-													style={{
-														flex: 1,
-														padding: "8px",
-														backgroundColor: "#4CAF50",
-														color: "white",
-														border: "none",
-														borderRadius: "4px",
-														cursor: "pointer",
-													}}
-												>
-													Mark Done
-												</button>
-											</div>
-										)}
-
-										{status === "done" && (
-											<div
-												style={{
-													display: "flex",
-													gap: "5px",
-													marginTop: "10px",
-												}}
-											>
-												<button
-													onClick={() => moveItem(item, "done", "todo")}
-													style={{
-														flex: 1,
-														padding: "8px",
-														backgroundColor: "#ff9800",
-														color: "white",
-														border: "none",
-														borderRadius: "4px",
-														cursor: "pointer",
-														fontSize: "12px",
-													}}
-												>
-													Back to Todo
-												</button>
-												<button
-													onClick={() => moveItem(item, "done", "inprogress")}
-													style={{
-														flex: 1,
-														padding: "8px",
-														backgroundColor: "#2196F3",
-														color: "white",
-														border: "none",
-														borderRadius: "4px",
-														cursor: "pointer",
-														fontSize: "12px",
-													}}
-												>
-													Back to In Progress
-												</button>
-											</div>
-										)}
-									</>
+								{/* Right Arrow Button */}
+								{canMoveRight && (
+									<button
+										onClick={() => moveItem(item, status, rightStatus)}
+										style={{
+											padding: "4px 6px",
+											backgroundColor:
+												rightStatus === "done" ? "#4CAF50" : "#2196F3",
+											color: "white",
+											border: "none",
+											borderRadius: "3px",
+											cursor: "pointer",
+											fontSize: "13px",
+											flexShrink: 0,
+											display: "flex",
+											alignItems: "center",
+											justifyContent: "center",
+											minWidth: "24px",
+											height: "24px",
+										}}
+										title={`Move to ${
+											rightStatus === "done" ? "Done" : "In Progress"
+										}`}
+									>
+										→
+									</button>
+								)}
+								{!canMoveRight && (
+									<div style={{ width: "24px", flexShrink: 0 }} />
 								)}
 							</div>
 						);
@@ -371,16 +277,17 @@ function StepTwo() {
 	return (
 		<div
 			style={{
-				padding: "20px",
+				padding: "clamp(10px, 3vw, 20px)",
 				maxWidth: "1400px",
 				margin: "0 auto",
 				width: "100%",
+				boxSizing: "border-box",
 			}}
 		>
 			<h1
 				style={{
-					fontSize: "clamp(24px, 4vw, 32px)",
-					marginBottom: "30px",
+					fontSize: "clamp(20px, 4vw, 28px)",
+					marginBottom: "clamp(15px, 3vw, 30px)",
 					color: "#333",
 				}}
 			>
@@ -389,36 +296,50 @@ function StepTwo() {
 
 			<div
 				style={{
-					marginBottom: "30px",
-					padding: "20px",
+					marginBottom: "clamp(15px, 3vw, 30px)",
+					padding: "clamp(12px, 3vw, 20px)",
 					backgroundColor: "#f0f0f0",
 					borderRadius: "4px",
 				}}
 			>
-				<label style={{ fontSize: "18px", marginRight: "15px" }}>
-					<strong>Select Station:</strong>
-				</label>
-				<select
-					value={selectedStationId || ""}
-					onChange={(e) => setSelectedStationId(parseInt(e.target.value))}
+				<div
 					style={{
-						padding: "10px 15px",
-						fontSize: "16px",
-						minWidth: "250px",
-						borderRadius: "4px",
-						border: "1px solid #ddd",
+						display: "flex",
+						flexDirection: "column",
+						gap: "10px",
 					}}
 				>
-					{stations.map((station) => (
-						<option key={station.id} value={station.id}>
-							{station.name}
-						</option>
-					))}
-				</select>
+					<label
+						style={{
+							fontSize: "13px",
+							fontWeight: "600",
+						}}
+					>
+						Select Station:
+					</label>
+					<select
+						value={selectedStationId || ""}
+						onChange={(e) => setSelectedStationId(parseInt(e.target.value))}
+						style={{
+							padding: "10px",
+							fontSize: "13px",
+							width: "100%",
+							borderRadius: "4px",
+							border: "1px solid #ddd",
+							boxSizing: "border-box",
+						}}
+					>
+						{stations.map((station) => (
+							<option key={station.id} value={station.id}>
+								{station.name}
+							</option>
+						))}
+					</select>
 
-				{loading && (
-					<span style={{ marginLeft: "15px", color: "#666" }}>Loading...</span>
-				)}
+					{/* {loading && (
+						<span style={{ fontSize: "13px", color: "#666" }}>Loading...</span>
+					)} */}
+				</div>
 			</div>
 
 			{selectedStationId && (
@@ -426,8 +347,8 @@ function StepTwo() {
 					style={{
 						display: "flex",
 						flexDirection: "column",
-						gap: "10px",
-						marginTop: "20px",
+						gap: "clamp(10px, 2vw, 15px)",
+						marginTop: "clamp(10px, 2vw, 20px)",
 					}}
 					className="kanban-container"
 				>

@@ -74,6 +74,29 @@ function StepZero() {
 		}
 	};
 
+	const handleDeleteStation = async (stationId, stationName) => {
+		const confirmed = window.confirm(
+			`Are you sure you want to delete station "${stationName}"?\n\nThis will also delete all menu items associated with this station.`
+		);
+		if (!confirmed) return;
+
+		try {
+			const response = await stationsAPI.delete(stationId);
+			if (response.data.menu_items_count > 0) {
+				alert(
+					`Station deleted successfully along with ${response.data.menu_items_count} associated menu item(s).`
+				);
+			}
+			loadStations();
+			if (selectedMenu) {
+				loadMenuItems(selectedMenu.id);
+			}
+		} catch (error) {
+			console.error("Error deleting station:", error);
+			alert("Error deleting station");
+		}
+	};
+
 	const handleCreateMenuItem = async (e) => {
 		e.preventDefault();
 		if (!selectedMenu) {
@@ -138,16 +161,17 @@ function StepZero() {
 	return (
 		<div
 			style={{
-				padding: "20px",
+				padding: "clamp(10px, 3vw, 20px)",
 				maxWidth: "1200px",
 				margin: "0 auto",
 				width: "100%",
+				boxSizing: "border-box",
 			}}
 		>
 			<h1
 				style={{
-					fontSize: "clamp(24px, 4vw, 32px)",
-					marginBottom: "30px",
+					fontSize: "clamp(20px, 4vw, 28px)",
+					marginBottom: "clamp(15px, 3vw, 30px)",
 					color: "#333",
 				}}
 			>
@@ -166,7 +190,13 @@ function StepZero() {
 						gap: "10px",
 					}}
 				>
-					<h2 style={{ fontSize: "clamp(18px, 3vw, 24px)", margin: 0 }}>
+					<h2
+						style={{
+							fontSize: "clamp(16px, 2.5vw, 18px)",
+							margin: 0,
+							fontWeight: "600",
+						}}
+					>
 						Stations
 					</h2>
 					<button
@@ -178,7 +208,7 @@ function StepZero() {
 							border: "none",
 							borderRadius: "4px",
 							cursor: "pointer",
-							fontSize: "14px",
+							fontSize: "13px",
 							whiteSpace: "nowrap",
 						}}
 					>
@@ -254,11 +284,41 @@ function StepZero() {
 								border: "1px solid #ddd",
 								borderRadius: "4px",
 								backgroundColor: "#f9f9f9",
+								position: "relative",
 							}}
 						>
-							<h3>{station.name}</h3>
+							<button
+								onClick={() => handleDeleteStation(station.id, station.name)}
+								style={{
+									position: "absolute",
+									top: "10px",
+									right: "10px",
+									backgroundColor: "#ffffff",
+									color: "#f44336",
+									border: "none",
+									borderRadius: "4px",
+									padding: "6px 12px",
+									cursor: "pointer",
+									fontSize: "14px",
+									fontWeight: "500",
+									boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+									transition: "all 0.2s ease",
+								}}
+								onMouseEnter={(e) => {
+									e.currentTarget.style.backgroundColor = "#fbe9e7";
+									e.currentTarget.style.transform = "scale(1.1)";
+								}}
+								onMouseLeave={(e) => {
+									e.currentTarget.style.backgroundColor = "#ffffff";
+									e.currentTarget.style.transform = "scale(1)";
+								}}
+								title="Delete station"
+							>
+								🗑️
+							</button>
+							<h3 style={{ marginRight: "50px" }}>{station.name}</h3>
 							{station.description && (
-								<p style={{ fontSize: "14px", color: "#666" }}>
+								<p style={{ fontSize: "13px", color: "#666" }}>
 									{station.description}
 								</p>
 							)}
@@ -279,7 +339,13 @@ function StepZero() {
 						gap: "10px",
 					}}
 				>
-					<h2 style={{ fontSize: "clamp(18px, 3vw, 24px)", margin: 0 }}>
+					<h2
+						style={{
+							fontSize: "clamp(16px, 2.5vw, 18px)",
+							margin: 0,
+							fontWeight: "600",
+						}}
+					>
 						Menus
 					</h2>
 					<button
@@ -314,7 +380,7 @@ function StepZero() {
 							border: "1px solid #ddd",
 							backgroundColor: "white",
 							color: "#333",
-							fontSize: "14px",
+							fontSize: "13px",
 							cursor: "pointer",
 						}}
 					>
@@ -339,7 +405,13 @@ function StepZero() {
 						gap: "10px",
 					}}
 				>
-					<h2 style={{ fontSize: "clamp(18px, 3vw, 24px)", margin: 0 }}>
+					<h2
+						style={{
+							fontSize: "clamp(16px, 2.5vw, 18px)",
+							margin: 0,
+							fontWeight: "600",
+						}}
+					>
 						Menu Items {selectedMenu && `(${selectedMenu.name})`}
 					</h2>
 					<button
@@ -401,7 +473,7 @@ function StepZero() {
 										width: "100%",
 										border: "1px solid #ddd",
 										borderRadius: "4px",
-										fontSize: "14px",
+										fontSize: "13px",
 									}}
 								/>
 							</div>
@@ -433,7 +505,7 @@ function StepZero() {
 										borderRadius: "4px",
 										backgroundColor: "white",
 										color: "#333",
-										fontSize: "14px",
+										fontSize: "13px",
 										cursor: "pointer",
 									}}
 								>
@@ -474,7 +546,7 @@ function StepZero() {
 										width: "100%",
 										border: "1px solid #ddd",
 										borderRadius: "4px",
-										fontSize: "14px",
+										fontSize: "13px",
 									}}
 								/>
 							</div>
@@ -504,7 +576,7 @@ function StepZero() {
 										width: "100%",
 										border: "1px solid #ddd",
 										borderRadius: "4px",
-										fontSize: "14px",
+										fontSize: "13px",
 									}}
 								/>
 							</div>
@@ -533,7 +605,7 @@ function StepZero() {
 										width: "100%",
 										border: "1px solid #ddd",
 										borderRadius: "4px",
-										fontSize: "14px",
+										fontSize: "13px",
 									}}
 								/>
 							</div>
@@ -562,7 +634,7 @@ function StepZero() {
 										borderRadius: "4px",
 										backgroundColor: "white",
 										color: "#333",
-										fontSize: "14px",
+										fontSize: "13px",
 										cursor: "pointer",
 									}}
 								>
@@ -598,7 +670,7 @@ function StepZero() {
 									minHeight: "80px",
 									border: "1px solid #ddd",
 									borderRadius: "4px",
-									fontSize: "14px",
+									fontSize: "13px",
 									resize: "vertical",
 								}}
 							/>
@@ -612,7 +684,7 @@ function StepZero() {
 								border: "none",
 								borderRadius: "4px",
 								cursor: "pointer",
-								fontSize: "16px",
+								fontSize: "14px",
 								fontWeight: "500",
 							}}
 						>
@@ -652,7 +724,7 @@ function StepZero() {
 									borderRadius: "4px",
 									padding: "6px 12px",
 									cursor: "pointer",
-									fontSize: "12px",
+									fontSize: "11px",
 									fontWeight: "500",
 									boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
 									transition: "all 0.2s ease",
@@ -684,7 +756,7 @@ function StepZero() {
 							)}
 							{item.price > 0 && (
 								<p>
-									<strong>Price:</strong> ${item.price.toFixed(2)}
+									<strong>Price:</strong> ₹{item.price.toFixed(2)}
 								</p>
 							)}
 							{item.prep_time > 0 && (
@@ -694,7 +766,7 @@ function StepZero() {
 							)}
 							{item.description && (
 								<p
-									style={{ fontSize: "14px", color: "#666", marginTop: "10px" }}
+									style={{ fontSize: "13px", color: "#666", marginTop: "10px" }}
 								>
 									{item.description}
 								</p>

@@ -8,6 +8,7 @@ import {
 import StepZero from "./pages/StepZero";
 import StepOne from "./pages/StepOne";
 import StepTwo from "./pages/StepTwo";
+import CustomerManagement from "./pages/CustomerManagement";
 import "./App.css";
 
 function Navigation() {
@@ -17,6 +18,10 @@ function Navigation() {
 		backgroundColor: "#333",
 		padding: "15px 0",
 		marginBottom: "20px",
+		position: "sticky",
+		top: 0,
+		zIndex: 1000,
+		boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
 	};
 
 	const linkStyle = {
@@ -36,13 +41,13 @@ function Navigation() {
 
 	return (
 		<nav style={navStyle}>
-			<div style={{ maxWidth: "1200px", margin: "0 auto", padding: "0 20px" }}>
+			<div style={{ maxWidth: "1200px", margin: "0 auto", padding: "0 clamp(10px, 3vw, 20px)" }}>
 				<div
 					style={{
 						display: "flex",
 						flexWrap: "wrap",
 						alignItems: "center",
-						gap: "10px",
+						gap: "clamp(6px, 1.5vw, 10px)",
 					}}
 				>
 					<Link
@@ -50,8 +55,9 @@ function Navigation() {
 						style={{
 							...linkStyle,
 							fontWeight: "bold",
-							fontSize: "clamp(16px, 3vw, 18px)",
-							marginRight: "10px",
+							fontSize: "clamp(14px, 3vw, 18px)",
+							marginRight: "clamp(5px, 2vw, 10px)",
+							padding: "clamp(6px, 1.5vw, 10px) clamp(10px, 2vw, 20px)",
 						}}
 					>
 						Kitchen Scheduler
@@ -62,11 +68,11 @@ function Navigation() {
 							...(location.pathname === "/step-zero"
 								? activeLinkStyle
 								: linkStyle),
-							fontSize: "clamp(12px, 2.5vw, 14px)",
-							padding: "8px 15px",
+							fontSize: "clamp(11px, 2.5vw, 14px)",
+							padding: "clamp(6px, 1.5vw, 8px) clamp(10px, 2vw, 15px)",
 						}}
 					>
-						Step Zero: Menu Setup
+						Step Zero
 					</Link>
 					<Link
 						to="/step-one"
@@ -74,29 +80,41 @@ function Navigation() {
 							...(location.pathname === "/step-one"
 								? activeLinkStyle
 								: linkStyle),
-							fontSize: "clamp(12px, 2.5vw, 14px)",
-							padding: "8px 15px",
+							fontSize: "clamp(11px, 2.5vw, 14px)",
+							padding: "clamp(6px, 1.5vw, 8px) clamp(10px, 2vw, 15px)",
 						}}
 					>
-						Step One: Take Order
+						Step One
 					</Link>
-					<Link
-						to="/step-two"
-						style={{
-							...(location.pathname === "/step-two"
-								? activeLinkStyle
-								: linkStyle),
-							fontSize: "clamp(12px, 2.5vw, 14px)",
-							padding: "8px 15px",
-						}}
-					>
-						Step Two: Kitchen Staff
-					</Link>
+						<Link
+							to="/step-two"
+							style={{
+								...(location.pathname === "/step-two"
+									? activeLinkStyle
+									: linkStyle),
+							fontSize: "clamp(11px, 2.5vw, 14px)",
+							padding: "clamp(6px, 1.5vw, 8px) clamp(10px, 2vw, 15px)",
+							}}
+						>
+						Step Two
+						</Link>
+						<Link
+							to="/customers"
+							style={{
+								...(location.pathname === "/customers"
+									? activeLinkStyle
+									: linkStyle),
+							fontSize: "clamp(11px, 2.5vw, 14px)",
+							padding: "clamp(6px, 1.5vw, 8px) clamp(10px, 2vw, 15px)",
+							}}
+						>
+							Customers
+						</Link>
+					</div>
 				</div>
-			</div>
-		</nav>
-	);
-}
+			</nav>
+		);
+	}
 
 function Home() {
 	return (
@@ -109,7 +127,7 @@ function Home() {
 			}}
 		>
 			<h1>Welcome to Kitchen Scheduler</h1>
-			<p style={{ fontSize: "18px", marginBottom: "40px" }}>
+			<p style={{ fontSize: "14px", marginBottom: "40px" }}>
 				Manage your restaurant operations efficiently
 			</p>
 
@@ -168,25 +186,42 @@ function Home() {
 						<p>Kitchen Staff View</p>
 					</div>
 				</Link>
+
+				<Link to="/customers" style={{ textDecoration: "none" }}>
+					<div
+						style={{
+							padding: "30px",
+							backgroundColor: "#f5f5f5",
+							borderRadius: "8px",
+							border: "2px solid #ddd",
+							transition: "all 0.3s",
+							cursor: "pointer",
+						}}
+					>
+						<h2>Customers</h2>
+						<p>Manage Customer Information</p>
+					</div>
+				</Link>
 			</div>
 		</div>
 	);
 }
 
 function App() {
-	return (
+  return (
 		<Router>
-			<div>
+      <div>
 				<Navigation />
-				<Routes>
-					<Route path="/" element={<Home />} />
-					<Route path="/step-zero" element={<StepZero />} />
-					<Route path="/step-one" element={<StepOne />} />
-					<Route path="/step-two" element={<StepTwo />} />
-				</Routes>
-			</div>
-		</Router>
-	);
+			<Routes>
+				<Route path="/" element={<Home />} />
+				<Route path="/step-zero" element={<StepZero />} />
+				<Route path="/step-one" element={<StepOne />} />
+				<Route path="/step-two" element={<StepTwo />} />
+				<Route path="/customers" element={<CustomerManagement />} />
+			</Routes>
+      </div>
+	</Router>
+);
 }
 
 export default App;

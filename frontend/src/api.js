@@ -75,4 +75,14 @@ export const kitchenAPI = {
 		api.patch(`/order-items/${orderItemId}/status`, { status }),
 };
 
+// Customers API
+export const customersAPI = {
+	getAll: () => api.get("/customers/"),
+	getById: (id) => api.get(`/customers/${id}`),
+	create: (data) => api.post("/customers/", data),
+	update: (id, data) => api.put(`/customers/${id}`, data),
+	delete: (id) => api.delete(`/customers/${id}`),
+	upsert: (data) => api.post("/customers/upsert", data),
+};
+
 export default api;
