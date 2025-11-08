@@ -18,6 +18,18 @@ fi
 
 # Install Python dependencies
 echo "Installing Python dependencies..."
+
+# First, install the scheduler package (local dependency)
+echo "Installing scheduler package..."
+cd scheduler
+# Get the absolute path to scheduler directory
+SCHEDULER_PATH=$(pwd)
+# Install scheduler package in editable mode
+uv pip install -e "$SCHEDULER_PATH"
+cd ..
+
+# Then install API dependencies
+echo "Installing API dependencies..."
 cd api
 uv sync
 
