@@ -59,11 +59,40 @@ class MenuUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
 
+# Customer Schemas
+class CustomerCreate(BaseModel):
+    email: str
+    name: str
+    phone_number: Optional[str] = None
+    plan_type: Optional[str] = None
+    paid: int = 0
+
+class CustomerUpdate(BaseModel):
+    email: Optional[str] = None
+    name: Optional[str] = None
+    phone_number: Optional[str] = None
+    plan_type: Optional[str] = None
+    paid: Optional[int] = None
+
+class Customer(BaseModel):
+    id: int
+    email: str
+    name: str
+    phone_number: Optional[str] = None
+    plan_type: Optional[str] = None
+    paid: int
+    created_at: datetime
+    
+    class Config:
+        from_attributes = True
+
 # Order Schemas
 class OrderCreate(BaseModel):
     table_number: Optional[str] = None
     order_type: str  # "dine_in" or "parcel"
+    customer_id: int  # Required
     order_items: List[dict]  # [{"menu_item_id": int, "quantity": int}]
+    is_out_of_plan: Optional[bool] = False  # Optional flag to mark order as out of plan
 
 class OrderItem(BaseModel):
     id: int
@@ -71,6 +100,7 @@ class OrderItem(BaseModel):
     menu_item_id: int
     quantity: int
     status: str  # "todo", "inprogress", "done"
+    is_out_of_plan: bool = False  # Marks if order item exceeds customer's paid amount
     created_at: datetime
     menu_item: Optional[dict] = None  # Will be populated with menu item details
     
@@ -82,6 +112,9 @@ class Order(BaseModel):
     table_number: Optional[str] = None
     order_type: str
     status: str
+    customer_id: Optional[int] = None
+    customer: Optional[dict] = None
+    is_out_of_plan: bool = False  # Marks if order exceeds customer's paid amount
     created_at: datetime
     order_items: List[OrderItem] = []
     

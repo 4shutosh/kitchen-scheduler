@@ -29,6 +29,8 @@ class SchedulerMenuItem(BaseModel):
     ingredients: List[str]
     instructions: str
     image_url: str
+    station_id: Optional[int] = None
+    menu_id: Optional[int] = None
     created_at: datetime
 
 class MenuItemRepository(BaseRepository[MenuItemDB]):
@@ -99,5 +101,7 @@ class MenuItemRepository(BaseRepository[MenuItemDB]):
             ingredients=json.loads(db_item.ingredients) if db_item.ingredients else [],
             instructions=db_item.instructions or "",
             image_url=db_item.image_url or "",
+            station_id=db_item.station_id,
+            menu_id=db_item.menu_id,
             created_at=db_item.created_at
         )

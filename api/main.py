@@ -9,14 +9,16 @@ from database import get_db, engine
 from db_models import Base
 from schemas import (
     MenuItem, MenuItemCreate, MenuItemUpdate, Menu, MenuCreate, MenuUpdate,
-    Station, StationCreate, StationUpdate, Order, OrderCreate, OrderItem, OrderItemUpdate
+    Station, StationCreate, StationUpdate, Order, OrderCreate, OrderItem, OrderItemUpdate,
+    Customer, CustomerCreate, CustomerUpdate
 )
 from crud import (
     get_menu_item, get_menu_items, create_menu_item, update_menu_item, delete_menu_item,
     get_menu, get_menus, create_menu, update_menu, delete_menu, get_menu_items_by_menu,
     get_station, get_stations, create_station, update_station, delete_station,
     get_order, get_orders, create_order, get_order_items_by_station, 
-    update_order_item_status, get_order_item
+    update_order_item_status, get_order_item,
+    get_customer, get_customers, create_customer, update_customer, delete_customer, upsert_customer
 )
 
 # Create database tables
@@ -158,11 +160,11 @@ def update_station_endpoint(station_id: int, station: StationUpdate, db: Session
 
 @app.delete("/stations/{station_id}")
 def delete_station_endpoint(station_id: int, db: Session = Depends(get_db)):
-    """Delete a station"""
-    success = delete_station(db, station_id=station_id)
-    if not success:
-        raise HTTPException(status_code=404, detail="Station not found")
-    return {"message": "Station deleted successfully"}
+    """Delete a station and all associated menu items"""
+    result = delete_station(db, station_id=station_id)
+    if not result["success"]:
+        raise HTTPException(status_code=404, detail=result["message"])
+    return result
 
 # Order endpoints
 @app.post("/orders/", response_model=Order, status_code=status.HTTP_201_CREATED)
@@ -182,11 +184,28 @@ def read_orders(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     # Populate order items with menu item details
     result = []
     for order in orders:
+        # Get customer info if exists
+        customer_info = None
+        if order.customer_id:
+            customer = get_customer(db, order.customer_id)
+            if customer:
+                customer_info = {
+                    "id": customer.id,
+                    "email": customer.email,
+                    "name": customer.name,
+                    "phone_number": customer.phone_number,
+                    "plan_type": customer.plan_type,
+                    "paid": customer.paid
+                }
+        
         order_dict = {
             "id": order.id,
             "table_number": order.table_number,
             "order_type": order.order_type,
             "status": order.status,
+            "customer_id": order.customer_id,
+            "customer": customer_info,
+            "is_out_of_plan": order.is_out_of_plan if hasattr(order, 'is_out_of_plan') else False,
             "created_at": order.created_at,
             "order_items": []
         }
@@ -198,6 +217,7 @@ def read_orders(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
                 "menu_item_id": item.menu_item_id,
                 "quantity": item.quantity,
                 "status": item.status,
+                "is_out_of_plan": item.is_out_of_plan if hasattr(item, 'is_out_of_plan') else False,
                 "created_at": item.created_at,
                 "menu_item": menu_item.dict() if menu_item else None
             }
@@ -211,12 +231,30 @@ def read_order(order_id: int, db: Session = Depends(get_db)):
     order = get_order(db, order_id=order_id)
     if order is None:
         raise HTTPException(status_code=404, detail="Order not found")
+    
+    # Get customer info if exists
+    customer_info = None
+    if order.customer_id:
+        customer = get_customer(db, order.customer_id)
+        if customer:
+            customer_info = {
+                "id": customer.id,
+                "email": customer.email,
+                "name": customer.name,
+                "phone_number": customer.phone_number,
+                "plan_type": customer.plan_type,
+                "paid": customer.paid
+            }
+    
     # Populate order items with menu item details
     order_dict = {
         "id": order.id,
         "table_number": order.table_number,
         "order_type": order.order_type,
         "status": order.status,
+        "customer_id": order.customer_id,
+        "customer": customer_info,
+        "is_out_of_plan": order.is_out_of_plan if hasattr(order, 'is_out_of_plan') else False,
         "created_at": order.created_at,
         "order_items": []
     }
@@ -228,6 +266,7 @@ def read_order(order_id: int, db: Session = Depends(get_db)):
             "menu_item_id": item.menu_item_id,
             "quantity": item.quantity,
             "status": item.status,
+            "is_out_of_plan": item.is_out_of_plan if hasattr(item, 'is_out_of_plan') else False,
             "created_at": item.created_at,
             "menu_item": menu_item.dict() if menu_item else None
         }
@@ -238,18 +277,71 @@ def read_order(order_id: int, db: Session = Depends(get_db)):
 @app.get("/stations/{station_id}/order-items/")
 def read_order_items_by_station(station_id: int, status: Optional[str] = None, db: Session = Depends(get_db)):
     """Get order items for a specific station, optionally filtered by status"""
+    from sqlalchemy import text
+    from database import DATABASE_URL
+    
     order_items = get_order_items_by_station(db, station_id=station_id, status=status)
+    
+    # Check once if customer_id column exists (for efficiency)
+    customer_column_exists = True
+    try:
+        if "sqlite" in DATABASE_URL.lower():
+            pragma_result = db.execute(text("PRAGMA table_info(orders)"))
+            columns = [row[1] for row in pragma_result.fetchall()]
+            customer_column_exists = 'customer_id' in columns
+        else:
+            check_result = db.execute(text("""
+                SELECT column_name 
+                FROM information_schema.columns 
+                WHERE table_name='orders' AND column_name='customer_id'
+            """))
+            customer_column_exists = check_result.fetchone() is not None
+    except Exception:
+        customer_column_exists = False
+    
     # Populate with menu item and order details
     result = []
     for item in order_items:
         menu_item = get_menu_item(db, item.menu_item_id)
         order = get_order(db, item.order_id)
+        
+        # Get customer info if exists - query directly from orders table
+        customer_info = None
+        if order and customer_column_exists:
+            # Query customer_id directly from orders table using raw SQL
+            customer_id = None
+            try:
+                query_result = db.execute(
+                    text("SELECT customer_id FROM orders WHERE id = :order_id"),
+                    {"order_id": order.id}
+                ).fetchone()
+                if query_result and query_result[0] is not None:
+                    customer_id = query_result[0]
+            except Exception:
+                customer_id = None
+            
+            if customer_id:
+                try:
+                    customer = get_customer(db, customer_id)
+                    if customer:
+                        customer_info = {
+                            "id": customer.id,
+                            "email": customer.email,
+                            "name": customer.name,
+                            "phone_number": customer.phone_number,
+                            "plan_type": customer.plan_type,
+                            "paid": customer.paid
+                        }
+                except Exception:
+                    customer_info = None
+        
         item_dict = {
             "id": item.id,
             "order_id": item.order_id,
             "menu_item_id": item.menu_item_id,
             "quantity": item.quantity,
             "status": item.status,
+            "is_out_of_plan": item.is_out_of_plan if hasattr(item, 'is_out_of_plan') else False,
             "created_at": item.created_at,
             "menu_item": menu_item.dict() if menu_item else None,
             "order": {
@@ -257,7 +349,9 @@ def read_order_items_by_station(station_id: int, status: Optional[str] = None, d
                 "table_number": order.table_number,
                 "order_type": order.order_type,
                 "status": order.status,
-                "created_at": order.created_at
+                "is_out_of_plan": order.is_out_of_plan if hasattr(order, 'is_out_of_plan') else False,
+                "created_at": order.created_at,
+                "customer": customer_info
             } if order else None
         }
         result.append(item_dict)
@@ -278,6 +372,7 @@ def update_order_item_status_endpoint(order_item_id: int, status_update: OrderIt
         "menu_item_id": updated_item.menu_item_id,
         "quantity": updated_item.quantity,
         "status": updated_item.status,
+        "is_out_of_plan": updated_item.is_out_of_plan if hasattr(updated_item, 'is_out_of_plan') else False,
         "created_at": updated_item.created_at,
         "menu_item": menu_item.dict() if menu_item else None,
         "order": {
@@ -285,9 +380,51 @@ def update_order_item_status_endpoint(order_item_id: int, status_update: OrderIt
             "table_number": order.table_number,
             "order_type": order.order_type,
             "status": order.status,
+            "is_out_of_plan": order.is_out_of_plan if hasattr(order, 'is_out_of_plan') else False,
             "created_at": order.created_at
         } if order else None
     }
+
+# Customer endpoints
+@app.post("/customers/", response_model=Customer, status_code=status.HTTP_201_CREATED)
+def create_customer_endpoint(customer: CustomerCreate, db: Session = Depends(get_db)):
+    """Create a new customer"""
+    return create_customer(db=db, customer=customer)
+
+@app.get("/customers/", response_model=List[Customer])
+def read_customers(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    """Get all customers"""
+    customers = get_customers(db, skip=skip, limit=limit)
+    return customers
+
+@app.get("/customers/{customer_id}", response_model=Customer)
+def read_customer(customer_id: int, db: Session = Depends(get_db)):
+    """Get a specific customer"""
+    customer = get_customer(db, customer_id=customer_id)
+    if customer is None:
+        raise HTTPException(status_code=404, detail="Customer not found")
+    return customer
+
+@app.put("/customers/{customer_id}", response_model=Customer)
+def update_customer_endpoint(customer_id: int, customer: CustomerUpdate, db: Session = Depends(get_db)):
+    """Update a customer"""
+    updated_customer = update_customer(db, customer_id=customer_id, customer=customer)
+    if updated_customer is None:
+        raise HTTPException(status_code=404, detail="Customer not found")
+    return updated_customer
+
+@app.delete("/customers/{customer_id}")
+def delete_customer_endpoint(customer_id: int, db: Session = Depends(get_db)):
+    """Delete a customer"""
+    success = delete_customer(db, customer_id=customer_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Customer not found")
+    return {"message": "Customer deleted successfully"}
+
+@app.post("/customers/upsert", response_model=Customer, status_code=status.HTTP_200_OK)
+def upsert_customer_endpoint(customer: CustomerCreate, db: Session = Depends(get_db)):
+    """Create or update a customer based on email"""
+    return upsert_customer(db=db, customer=customer)
 
 # Run the application
 if __name__ == "__main__":
