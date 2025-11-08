@@ -35,11 +35,37 @@ uv sync
 
 echo "Setup complete!"
 echo ""
+
+# Detect local IP address for network access
+LOCAL_IP=""
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    # macOS
+    LOCAL_IP=$(ipconfig getifaddr en0 2>/dev/null || ipconfig getifaddr en1 2>/dev/null || echo "")
+elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
+    # Linux
+    LOCAL_IP=$(hostname -I | awk '{print $1}' 2>/dev/null || echo "")
+fi
+
+if [ -z "$LOCAL_IP" ]; then
+    LOCAL_IP="YOUR_LOCAL_IP"
+fi
+
 echo "To start the API server:"
 echo "cd api && python main.py"
 echo ""
-echo "The API will be available at: http://localhost:8000"
+echo "The API will be available at:"
+echo "  - Local: http://localhost:8000"
+echo "  - Network: http://${LOCAL_IP}:8000"
+echo ""
 echo "API documentation at: http://localhost:8000/docs"
+echo ""
+echo "Note: The server is configured to bind to 0.0.0.0, making it accessible"
+echo "      from all machines on your local network."
+if [ "$LOCAL_IP" != "YOUR_LOCAL_IP" ]; then
+    echo "      Other devices can access it at: http://${LOCAL_IP}:8000"
+else
+    echo "      Find your local IP with: ifconfig | grep 'inet ' | grep -v 127.0.0.1"
+fi
 echo ""
 if [[ "$DATABASE_URL" == *"postgresql"* ]]; then
     echo "Database connection (PostgreSQL):"
