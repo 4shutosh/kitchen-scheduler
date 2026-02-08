@@ -1,81 +1,85 @@
 # Kitchen Scheduler API
 
-A FastAPI application for managing kitchen scheduling and menu items.
+A simple FastAPI-based REST API for managing menus and menu items with PostgreSQL database.
 
-## Setup
+## Features
 
-This project uses `uv` as the dependency manager. Make sure you have `uv` installed.
+- **Menu Management**: Full CRUD operations for menus
+- **Menu Item Management**: Full CRUD operations for menu items
+- **PostgreSQL Database**: Persistent storage with SQLAlchemy ORM
+- **Auto-generated Documentation**: Interactive API docs at `/docs`
 
-### Installation
+## Quick Start
 
-```bash
-# Install dependencies
-uv sync
+1. **Setup the environment:**
 
-# Or if you want to add new dependencies
-uv add <package-name>
-```
+   ```bash
+   ./setup.sh
+   ```
 
-### Running the Application
+2. **Start the API server:**
 
-```bash
-# Run with uv
-uv run uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+   ```bash
+   cd api
+   python main.py
+   ```
 
-# Or run directly
-uv run python main.py
-```
-
-### API Documentation
-
-Once the server is running, you can access:
-
-- **Interactive API docs**: http://localhost:8000/docs
-- **ReDoc documentation**: http://localhost:8000/redoc
-- **OpenAPI schema**: http://localhost:8000/openapi.json
+3. **Access the API:**
+   - API: http://localhost:8000
+   - Interactive docs: http://localhost:8000/docs
+   - Health check: http://localhost:8000/health
 
 ## API Endpoints
 
-### Basic Endpoints
+### Menus
 
-- `GET /` - Welcome message
-- `GET /health` - Health check
+- `GET /menus/` - Get all menus
+- `POST /menus/` - Create a new menu
+- `GET /menus/{menu_id}` - Get a specific menu
+- `PUT /menus/{menu_id}` - Update a menu
+- `DELETE /menus/{menu_id}` - Delete a menu
+- `GET /menus/{menu_id}/menu-items/` - Get menu items for a menu
 
-### Menu Management
+### Menu Items
 
-- `GET /menu` - Get all menu items
-- `GET /menu/{item_id}` - Get specific menu item
-- `POST /menu` - Create new menu item
-- `PUT /menu/{item_id}` - Update menu item
-- `DELETE /menu/{item_id}` - Delete menu item
-- `GET /menu/category/{category}` - Get items by category
+- `GET /menu-items/` - Get all menu items
+- `POST /menu-items/` - Create a new menu item
+- `GET /menu-items/{menu_item_id}` - Get a specific menu item
+- `PUT /menu-items/{menu_item_id}` - Update a menu item
+- `DELETE /menu-items/{menu_item_id}` - Delete a menu item
+
+## Database
+
+The API uses PostgreSQL with the following tables:
+
+- `menus`: Stores menu information
+- `menu_items`: Stores menu item details with foreign key to menus
+
+## Environment Variables
+
+- `DATABASE_URL`: PostgreSQL connection string (default: `postgresql://postgres:password@localhost:5432/kitchen_scheduler`)
 
 ## Example Usage
 
+### Create a Menu
+
 ```bash
-# Get all menu items
-curl http://localhost:8000/menu
-
-# Create a new menu item
-curl -X POST http://localhost:8000/menu \
+curl -X POST "http://localhost:8000/menus/" \
   -H "Content-Type: application/json" \
-  -d '{
-    "name": "Pasta Carbonara",
-    "description": "Creamy pasta with bacon and eggs",
-    "prep_time": 20,
-    "category": "Main Course"
-  }'
-
-# Get items by category
-curl http://localhost:8000/menu/category/Salad
+  -d '{"name": "Breakfast Menu", "description": "Morning delights"}'
 ```
 
-## Development
+### Create a Menu Item
 
-The application includes:
-
-- FastAPI with automatic API documentation
-- Pydantic models for request/response validation
-- In-memory storage (replace with database for production)
-- CORS support (can be added if needed)
-- Hot reload during development
+```bash
+curl -X POST "http://localhost:8000/menu-items/" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Pancakes",
+    "prep_time": 15,
+    "category": "Breakfast",
+    "price": 8.99,
+    "ingredients": ["flour", "eggs", "milk"],
+    "availability": "available"
+  }'
+```
