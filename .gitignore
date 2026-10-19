@@ -25,5 +25,20 @@ dist/
 # Node
 node_modules/
 
-# Local test database
-api/test_kitchen.db
+# Data — databases, customer exports, backups (never commit)
+*.db
+*.db.bak*
+*.sqlite
+*.sqlite3
+*.csv
+*.tsv
+*.xlsx
+
+# Secrets
+.env
+.env.*
+*.pem
+*.key
+id_rsa*
+id_ed25519*
+ssh_*
