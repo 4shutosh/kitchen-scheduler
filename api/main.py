@@ -7,9 +7,9 @@ import secrets
 import os
 import uvicorn
 
-# Hardcoded credentials — change via env vars in production
-ADMIN_USERNAME = os.environ.get("APP_USERNAME", "bahubali")
-ADMIN_PASSWORD = os.environ.get("APP_PASSWORD", "12katappa34")
+# Dev-only fallback credentials — always set APP_USERNAME/APP_PASSWORD when deployed
+ADMIN_USERNAME = os.environ.get("APP_USERNAME", "admin")
+ADMIN_PASSWORD = os.environ.get("APP_PASSWORD", "admin")
 # Simple in-memory token store
 _valid_tokens: set = set()
 
