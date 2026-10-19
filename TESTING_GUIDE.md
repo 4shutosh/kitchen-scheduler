@@ -39,9 +39,9 @@ npm run dev
 5. **Add Menu Items** (select the menu first):
    - Click "+ Add Menu Item"
    - Example items:
-     - **Grill Station**: "Burger" ($12.99, 15min), "Steak" ($25.99, 25min)
-     - **Salad Station**: "Caesar Salad" ($9.99, 10min), "Garden Salad" ($8.99, 8min)
-     - **Dessert Station**: "Ice Cream" ($5.99, 5min), "Chocolate Cake" ($7.99, 10min)
+     - **Grill Station**: "Burger" (₹12.99, 15min), "Steak" (₹25.99, 25min)
+     - **Salad Station**: "Caesar Salad" (₹9.99, 10min), "Garden Salad" (₹8.99, 8min)
+     - **Dessert Station**: "Ice Cream" (₹5.99, 5min), "Chocolate Cake" (₹7.99, 10min)
 
 ### Step 1: Take Orders
 

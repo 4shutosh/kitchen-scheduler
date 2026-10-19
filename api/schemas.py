@@ -1,5 +1,5 @@
-from pydantic import BaseModel
-from typing import List, Optional
+from pydantic import BaseModel, field_validator
+from typing import List, Optional, Literal
 from datetime import datetime
 
 # Import scheduler models from repositories
@@ -61,7 +61,7 @@ class MenuUpdate(BaseModel):
 
 # Customer Schemas
 class CustomerCreate(BaseModel):
-    email: str
+    email: Optional[str] = None
     name: str
     phone_number: Optional[str] = None
     plan_type: Optional[str] = None
@@ -76,7 +76,7 @@ class CustomerUpdate(BaseModel):
 
 class Customer(BaseModel):
     id: int
-    email: str
+    email: Optional[str] = None
     name: str
     phone_number: Optional[str] = None
     plan_type: Optional[str] = None
@@ -89,10 +89,10 @@ class Customer(BaseModel):
 # Order Schemas
 class OrderCreate(BaseModel):
     table_number: Optional[str] = None
-    order_type: str  # "dine_in" or "parcel"
-    customer_id: int  # Required
-    order_items: List[dict]  # [{"menu_item_id": int, "quantity": int}]
-    is_out_of_plan: Optional[bool] = False  # Optional flag to mark order as out of plan
+    order_type: Literal["dine_in", "parcel"]
+    customer_id: int
+    order_items: List[dict]
+    is_out_of_plan: Optional[bool] = False
 
 class OrderItem(BaseModel):
     id: int
@@ -122,7 +122,7 @@ class Order(BaseModel):
         from_attributes = True
 
 class OrderItemUpdate(BaseModel):
-    status: str  # "todo", "inprogress", "done"
+    status: Literal["todo", "inprogress", "done"]
 
 # Use the scheduler models directly for responses
 MenuItem = SchedulerMenuItem

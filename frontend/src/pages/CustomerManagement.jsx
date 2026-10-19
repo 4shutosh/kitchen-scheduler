@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { customersAPI } from "../api";
+import { parseCustomerFile } from "../utils/parseCustomerFile";
 
 function CustomerManagement() {
 	const [customers, setCustomers] = useState([]);
@@ -32,8 +33,8 @@ function CustomerManagement() {
 
 	const handleCreateOrUpdateCustomer = async (e) => {
 		e.preventDefault();
-		if (!customerForm.email || !customerForm.name) {
-			alert("Email and Name are required");
+		if (!customerForm.name) {
+			alert("Name is required");
 			return;
 		}
 
@@ -78,6 +79,17 @@ function CustomerManagement() {
 		}, 100);
 	};
 
+	const handleDeleteAll = async () => {
+		if (!window.confirm(`Delete all ${customers.length} customers? This cannot be undone.`)) return;
+		try {
+			await Promise.all(customers.map((c) => customersAPI.delete(c.id)));
+			loadCustomers();
+		} catch (error) {
+			console.error("Error deleting all customers:", error);
+			alert("Error deleting customers");
+		}
+	};
+
 	const handleDeleteCustomer = async (customerId, customerName) => {
 		if (
 			!window.confirm(
@@ -108,132 +120,6 @@ function CustomerManagement() {
 		setShowCustomerForm(false);
 	};
 
-	const extractPaidAmount = (planTypeText) => {
-		// Extract integer that follows the ₹ symbol
-		// Pattern: ₹ followed by optional spaces, then digits
-		const matches = planTypeText.match(/₹\s*(\d+)/);
-		if (matches && matches.length > 1) {
-			return parseInt(matches[1]);
-		}
-		return 0;
-	};
-
-	// Helper function to parse CSV line handling quoted fields
-	const parseCSVLine = (line) => {
-		const result = [];
-		let current = "";
-		let inQuotes = false;
-
-		for (let i = 0; i < line.length; i++) {
-			const char = line[i];
-			const nextChar = line[i + 1];
-
-			if (char === '"') {
-				if (inQuotes && nextChar === '"') {
-					// Escaped quote
-					current += '"';
-					i++; // Skip next quote
-				} else {
-					// Toggle quote state
-					inQuotes = !inQuotes;
-				}
-			} else if (char === "," && !inQuotes) {
-				// End of field
-				result.push(current.trim());
-				current = "";
-			} else {
-				current += char;
-			}
-		}
-
-		// Add last field
-		result.push(current.trim());
-		return result;
-	};
-
-	const parseCSV = (text) => {
-		const lines = text.split("\n");
-		if (lines.length === 0) return [];
-
-		// Get headers from first line using proper CSV parsing
-		const headers = parseCSVLine(lines[0]).map((h) => h.replace(/^"|"$/g, ""));
-
-		// Define required columns
-		const requiredColumns = {
-			name: "name",
-			email: "email",
-			phone_number: "phone_number",
-			planType:
-				"Pick your tasting plate (You can pick one or more, payment will be collected via Whatsapp)",
-			approval_status: "approval_status",
-		};
-
-		// Find column indices
-		const nameIdx = headers.indexOf(requiredColumns.name);
-		const phoneIdx = headers.indexOf(requiredColumns.phone_number);
-		const planTypeIdx = headers.indexOf(requiredColumns.planType);
-		const emailIdx = headers.indexOf(requiredColumns.email);
-		const approvalIdx = headers.indexOf(requiredColumns.approval_status);
-
-		// Check which columns are missing and provide specific error
-		const missingColumns = [];
-		if (nameIdx === -1) missingColumns.push(`"${requiredColumns.name}"`);
-		if (emailIdx === -1) missingColumns.push(`"${requiredColumns.email}"`);
-		if (phoneIdx === -1)
-			missingColumns.push(`"${requiredColumns.phone_number}"`);
-		if (planTypeIdx === -1)
-			missingColumns.push(`"${requiredColumns.planType}"`);
-		if (approvalIdx === -1)
-			missingColumns.push(`"${requiredColumns.approval_status}"`);
-
-		if (missingColumns.length > 0) {
-			const foundColumns =
-				headers.length > 0
-					? `\n\nFound columns in your file:\n${headers
-							.map((h) => `  - "${h}"`)
-							.join("\n")}`
-					: "\n\nNo columns found in your file.";
-			throw new Error(
-				`Missing required column(s): ${missingColumns.join(", ")}\n\n` +
-					`Required columns are:\n` +
-					`  - "${requiredColumns.name}"\n` +
-					`  - "${requiredColumns.email}"\n` +
-					`  - "${requiredColumns.phone_number}"\n` +
-					`  - "${requiredColumns.planType}"\n` +
-					`  - "${requiredColumns.approval_status}"` +
-					foundColumns
-			);
-		}
-
-		const customers = [];
-
-		// Process data rows
-		for (let i = 1; i < lines.length; i++) {
-			const line = lines[i].trim();
-			if (!line) continue;
-
-			// Use proper CSV parsing to handle quoted fields with commas
-			const values = parseCSVLine(line).map((v) => v.replace(/^"|"$/g, ""));
-
-			const approvalStatus = values[approvalIdx]?.toLowerCase();
-
-			// Only process approved rows
-			if (approvalStatus === "approved") {
-				const planType = values[planTypeIdx] || "";
-				const paid = extractPaidAmount(planType);
-
-				customers.push({
-					name: values[nameIdx] || "",
-					email: values[emailIdx] || "",
-					phone_number: values[phoneIdx] || "",
-					plan_type: planType,
-					paid: paid,
-				});
-			}
-		}
-
-		return customers;
-	};
 
 	const handleFileSelect = async (event) => {
 		const file = event.target.files[0];
@@ -244,44 +130,31 @@ function CustomerManagement() {
 
 		try {
 			const text = await file.text();
-			const parsedCustomers = parseCSV(text);
+			const { customers: parsedCustomers, skipped } = parseCustomerFile(text);
 
 			if (parsedCustomers.length === 0) {
 				setImportStatus({
 					type: "warning",
-					message: "No approved customers found in the CSV file.",
+					message: "No paid customers found in the file.",
+					errors: skipped.length > 0 ? skipped : null,
 				});
 				setImporting(false);
 				return;
 			}
 
-			// Import customers one by one using upsert (create or update based on email)
 			let successCount = 0;
-			let updatedCount = 0;
 			let failCount = 0;
-			const errors = [];
+			const errors = [...skipped];
 
 			for (const customer of parsedCustomers) {
 				try {
-					if (!customer.email || !customer.name) {
+					if (!customer.name || (!customer.email && !customer.phone_number)) {
 						failCount++;
-						errors.push(`Skipped row: missing email or name`);
+						errors.push(`Skipped "${customer.name || "unknown"}": missing name or contact info (email/phone)`);
 						continue;
 					}
-
-					// Check if customer exists before upsert to track creates vs updates
-					const existingCustomers = customers;
-					const exists = existingCustomers.find(
-						(c) => c.email === customer.email
-					);
-
-					await customersAPI.upsert(customer);
-
-					if (exists) {
-						updatedCount++;
-					} else {
-						successCount++;
-					}
+					await customersAPI.create(customer);
+					successCount++;
 				} catch (error) {
 					failCount++;
 					errors.push(
@@ -292,11 +165,11 @@ function CustomerManagement() {
 				}
 			}
 
-			const totalSuccess = successCount + updatedCount;
+			const skipCount = skipped.length;
 			setImportStatus({
-				type: totalSuccess > 0 ? "success" : "error",
-				message: `Import completed: ${successCount} created, ${updatedCount} updated, ${failCount} failed`,
-				errors: errors.length > 0 ? errors.slice(0, 5) : null, // Show first 5 errors
+				type: successCount > 0 ? "success" : "error",
+				message: `Import completed: ${successCount} created, ${failCount} failed${skipCount > 0 ? `, ${skipCount} skipped` : ""}`,
+				errors: errors.length > 0 ? errors.slice(0, 10) : null,
 			});
 
 			loadCustomers();
@@ -369,7 +242,7 @@ function CustomerManagement() {
 						<input
 							ref={fileInputRef}
 							type="file"
-							accept=".csv"
+							accept=".csv,.tsv,.txt"
 							onChange={handleFileSelect}
 							style={{ display: "none" }}
 						/>
@@ -388,6 +261,22 @@ function CustomerManagement() {
 							}}
 						>
 							{importing ? "Importing..." : "📥 Import CSV"}
+						</button>
+						<button
+							onClick={handleDeleteAll}
+							disabled={customers.length === 0}
+							style={{
+								padding: "10px 20px",
+								backgroundColor: customers.length === 0 ? "#9E9E9E" : "#d32f2f",
+								color: "white",
+								border: "none",
+								borderRadius: "4px",
+								cursor: customers.length === 0 ? "not-allowed" : "pointer",
+								fontSize: "13px",
+								whiteSpace: "nowrap",
+							}}
+						>
+							🗑️ Delete All
 						</button>
 						<button
 							onClick={() => setShowCustomerForm(!showCustomerForm)}
@@ -494,7 +383,7 @@ function CustomerManagement() {
 										fontWeight: "500",
 									}}
 								>
-									Email <span style={{ color: "#e53935" }}>*</span>
+									Email
 								</label>
 								<input
 									type="email"
@@ -502,8 +391,7 @@ function CustomerManagement() {
 									onChange={(e) =>
 										setCustomerForm({ ...customerForm, email: e.target.value })
 									}
-									required
-									placeholder="customer@example.com"
+									placeholder="customer@example.com (optional)"
 									style={{
 										padding: "10px",
 										width: "100%",

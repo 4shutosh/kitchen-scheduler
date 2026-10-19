@@ -2,7 +2,16 @@ from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from typing import List, Optional
+from pydantic import BaseModel
+import secrets
+import os
 import uvicorn
+
+# Hardcoded credentials — change via env vars in production
+ADMIN_USERNAME = os.environ.get("APP_USERNAME", "bahubali")
+ADMIN_PASSWORD = os.environ.get("APP_PASSWORD", "12katappa34")
+# Simple in-memory token store
+_valid_tokens: set = set()
 
 # Import database and models
 from database import get_db, engine
@@ -34,7 +43,8 @@ app = FastAPI(
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, replace with specific origins
+    # Comma-separated list, e.g. "https://kitchen.andkuchen.com"; defaults to any origin for local dev
+    allow_origins=os.environ.get("ALLOWED_ORIGINS", "*").split(","),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -50,6 +60,29 @@ async def root():
 async def health_check():
     """Health check endpoint"""
     return {"status": "healthy", "service": "kitchen-scheduler-api"}
+
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+@app.post("/auth/login")
+def login(req: LoginRequest):
+    if req.username == ADMIN_USERNAME and req.password == ADMIN_PASSWORD:
+        token = secrets.token_hex(32)
+        _valid_tokens.add(token)
+        return {"token": token}
+    raise HTTPException(status_code=401, detail="Invalid credentials")
+
+@app.post("/auth/logout")
+def logout(body: dict):
+    _valid_tokens.discard(body.get("token", ""))
+    return {"ok": True}
+
+@app.get("/auth/verify")
+def verify(token: str):
+    if token in _valid_tokens:
+        return {"valid": True}
+    raise HTTPException(status_code=401, detail="Invalid token")
 
 # Menu Item endpoints
 @app.post("/menu-items/", response_model=MenuItem, status_code=status.HTTP_201_CREATED)

@@ -85,4 +85,11 @@ export const customersAPI = {
 	upsert: (data) => api.post("/customers/upsert", data),
 };
 
+// Auth API
+export const authAPI = {
+	login: (username, password) => api.post("/auth/login", { username, password }),
+	logout: (token) => api.post("/auth/logout", { token }),
+	verify: (token) => api.get("/auth/verify", { params: { token } }),
+};
+
 export default api;

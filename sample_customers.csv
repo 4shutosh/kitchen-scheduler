@@ -1,0 +1,7 @@
+name,email,phone_number,Pick your tasting plate (You can pick one or more, payment will be collected via Whatsapp),approval_status
+John Doe,john.doe@example.com,+1234567890,Premium Tasting Menu ₹500,approved
+Jane Smith,jane.smith@example.com,+9876543210,Basic Package ₹250,approved
+Bob Wilson,bob.wilson@example.com,,Standard Experience ₹350,pending
+Alice Brown,alice.brown@example.com,+5551234567,Deluxe Package ₹750,approved
+Charlie Davis,charlie@example.com,+1112223333,Family Plan ₹1200 (4 guests),approved
+

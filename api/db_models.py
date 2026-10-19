@@ -72,7 +72,7 @@ class CustomerDB(Base):
     __tablename__ = "customers"
     
     id = Column(Integer, primary_key=True, index=True)
-    email = Column(String(255), nullable=False, unique=True)
+    email = Column(String(255), nullable=True)
     name = Column(String(255), nullable=False)
     phone_number = Column(String(20), nullable=True)
     plan_type = Column(String(100), nullable=True)

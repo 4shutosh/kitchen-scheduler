@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
 	BrowserRouter as Router,
 	Routes,
@@ -9,9 +10,11 @@ import StepZero from "./pages/StepZero";
 import StepOne from "./pages/StepOne";
 import StepTwo from "./pages/StepTwo";
 import CustomerManagement from "./pages/CustomerManagement";
+import Login from "./pages/Login";
+import { authAPI } from "./api";
 import "./App.css";
 
-function Navigation() {
+function Navigation({ onLogout }) {
 	const location = useLocation();
 
 	const navStyle = {
@@ -110,6 +113,12 @@ function Navigation() {
 						>
 							Customers
 						</Link>
+						<button
+							onClick={onLogout}
+							style={{ marginLeft: "auto", background: "transparent", border: "1px solid #aaa", color: "white", borderRadius: "4px", padding: "6px 14px", cursor: "pointer", fontSize: "13px" }}
+						>
+							Logout
+						</button>
 					</div>
 				</div>
 			</nav>
@@ -208,10 +217,27 @@ function Home() {
 }
 
 function App() {
+	const [authed, setAuthed] = useState(!!sessionStorage.getItem("auth_token"));
+
+	const handleLogin = () => setAuthed(true);
+
+	const handleLogout = async () => {
+		const token = sessionStorage.getItem("auth_token");
+		if (token) {
+			try { await authAPI.logout(token); } catch {}
+			sessionStorage.removeItem("auth_token");
+		}
+		setAuthed(false);
+	};
+
+	if (!authed) {
+		return <Login onLogin={handleLogin} />;
+	}
+
   return (
 		<Router>
       <div>
-				<Navigation />
+				<Navigation onLogout={handleLogout} />
 			<Routes>
 				<Route path="/" element={<Home />} />
 				<Route path="/step-zero" element={<StepZero />} />

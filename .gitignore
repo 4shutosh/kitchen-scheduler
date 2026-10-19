@@ -21,3 +21,9 @@ dist/
 
 # OS
 .DS_Store
+
+# Node
+node_modules/
+
+# Local test database
+api/test_kitchen.db
